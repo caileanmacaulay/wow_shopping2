@@ -172,9 +172,10 @@ class SliverTopSelling extends ConsumerWidget {
         );
       },
       error: (err, stack) {
+        String errMsg = err.toString();
         return const SliverFillRemaining(
           child: Center(
-            child: CircularProgressIndicator(),
+            child: Text('I\'m sorry there\'s been an error: \n\$errMsg'),
           ),
         );
       },
