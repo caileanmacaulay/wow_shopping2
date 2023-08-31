@@ -14,6 +14,7 @@ import 'package:wow_shopping/widgets/product_card.dart';
 import 'package:wow_shopping/widgets/top_nav_bar.dart';
 
 import '../main/providers/bottom_navbar_provider.dart';
+import 'widgets/provider/future_fetch_top_selling_provider.dart';
 
 @immutable
 class HomePage extends ConsumerStatefulWidget {
@@ -33,7 +34,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (promo.asset == Assets.promo1) {
       ref.read(bottomNavbarProvider.notifier).gotoSection(NavItem.wishlist);
     } else if (promo.asset == Assets.promo2) {
-     ref.read(bottomNavbarProvider.notifier).gotoSection(NavItem.cart);
+      ref.read(bottomNavbarProvider.notifier).gotoSection(NavItem.cart);
     }
   }
 
@@ -92,81 +93,40 @@ class _HomePageState extends ConsumerState<HomePage> {
 }
 
 @immutable
-class SliverTopSelling extends ConsumerStatefulWidget {
+class SliverTopSelling extends ConsumerWidget {
   const SliverTopSelling({super.key});
 
   @override
-  ConsumerState<SliverTopSelling> createState() => _SliverTopSellingState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final futureTopSelling = ref.watch(futureFetchTopSellingProvider);
 
-class _SliverTopSellingState extends ConsumerState<SliverTopSelling> {
-  late Future<List<ProductItem>> _futureTopSelling;
-
-  @override
-  void initState() {
-    super.initState();
-    
-    _futureTopSelling = ref.read(productsRepoProvider).fetchTopSelling();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<ProductItem>>(
-      future: _futureTopSelling,
-      builder: (BuildContext context, AsyncSnapshot<List<ProductItem>> snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const SliverFillRemaining(
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
-        } else {
-          final data = snapshot.requireData;
-          return SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: horizontalPadding8,
-                  child: ContentHeading(
-                    title: 'Top Selling Items',
-                    buttonLabel: 'Show All',
-                    onButtonPressed: () {
-                      // FIXME: show all top selling items
-                    },
-                  ),
+    return futureTopSelling.when(
+      data: (data) {
+        data = data;
+        return SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: horizontalPadding8,
+                child: ContentHeading(
+                  title: 'Top Selling Items',
+                  buttonLabel: 'Show All',
+                  onButtonPressed: () {
+                    // FIXME: show all top selling items
+                  },
                 ),
-                verticalMargin8,
-                for (int index = 0; index < data.length; index += 2) ...[
-                  Builder(
-                    builder: (BuildContext context) {
-                      final item1 = data[index + 0];
-                      if (index + 1 < data.length) {
-                        final item2 = data[index + 1];
-                        return IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              horizontalMargin12,
-                              Expanded(
-                                child: ProductCard(
-                                  key: Key('top-selling-${item1.id}'),
-                                  item: item1,
-                                ),
-                              ),
-                              horizontalMargin12,
-                              Expanded(
-                                child: ProductCard(
-                                  key: Key('top-selling-${item2.id}'),
-                                  item: item2,
-                                ),
-                              ),
-                              horizontalMargin12,
-                            ],
-                          ),
-                        );
-                      } else {
-                        return Row(
+              ),
+              verticalMargin8,
+              for (int index = 0; index < data.length; index += 2) ...[
+                Builder(
+                  builder: (BuildContext context) {
+                    final item1 = data[index + 0];
+                    if (index + 1 < data.length) {
+                      final item2 = data[index + 1];
+                      return IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             horizontalMargin12,
                             Expanded(
@@ -176,20 +136,54 @@ class _SliverTopSellingState extends ConsumerState<SliverTopSelling> {
                               ),
                             ),
                             horizontalMargin12,
-                            const Spacer(),
+                            Expanded(
+                              child: ProductCard(
+                                key: Key('top-selling-${item2.id}'),
+                                item: item2,
+                              ),
+                            ),
                             horizontalMargin12,
                           ],
-                        );
-                      }
-                    },
-                  ),
-                  verticalMargin12,
-                ],
-                verticalMargin48 + verticalMargin48,
+                        ),
+                      );
+                    } else {
+                      return Row(
+                        children: [
+                          horizontalMargin12,
+                          Expanded(
+                            child: ProductCard(
+                              key: Key('top-selling-${item1.id}'),
+                              item: item1,
+                            ),
+                          ),
+                          horizontalMargin12,
+                          const Spacer(),
+                          horizontalMargin12,
+                        ],
+                      );
+                    }
+                  },
+                ),
+                verticalMargin12,
               ],
-            ),
-          );
-        }
+              verticalMargin48 + verticalMargin48,
+            ],
+          ),
+        );
+      },
+      error: (err, stack) {
+        return const SliverFillRemaining(
+          child: Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      },
+      loading: () {
+        return const SliverFillRemaining(
+          child: Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
       },
     );
   }
