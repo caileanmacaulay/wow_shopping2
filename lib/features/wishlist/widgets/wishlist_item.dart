@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wow_shopping/app/assets.dart';
 import 'package:wow_shopping/app/theme.dart';
+import 'package:wow_shopping/features/wishlist/bloc/wishlist_bloc.dart';
+import 'package:wow_shopping/features/wishlist/widgets/cubit/wishlist_item_cubit.dart';
 import 'package:wow_shopping/models/product_item.dart';
 import 'package:wow_shopping/widgets/app_icon.dart';
 import 'package:wow_shopping/widgets/common.dart';
@@ -19,6 +22,36 @@ class WishlistItem extends StatelessWidget {
   final ValueChanged<ProductItem> onPressed;
   final void Function(ProductItem item, bool value)? onToggleSelection;
   final bool? selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => WishlistItemCubit(
+          item: this,
+          wishlistBloc: context.watch<WishlistBloc>(),
+          context: context),
+      child: WishlistItemView(
+          onPressed: onPressed,
+          item: item,
+          selected: selected,
+          onToggleSelection: onToggleSelection),
+    );
+  }
+}
+
+class WishlistItemView extends StatelessWidget {
+  const WishlistItemView({
+    super.key,
+    required this.onPressed,
+    required this.item,
+    required this.selected,
+    required this.onToggleSelection,
+  });
+
+  final ValueChanged<ProductItem> onPressed;
+  final ProductItem item;
+  final bool? selected;
+  final void Function(ProductItem item, bool value)? onToggleSelection;
 
   @override
   Widget build(BuildContext context) {

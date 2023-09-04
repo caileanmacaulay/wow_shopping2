@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wow_shopping/app/assets.dart';
 import 'package:wow_shopping/app/theme.dart';
 import 'package:wow_shopping/backend/backend.dart';
@@ -8,141 +9,141 @@ import 'package:wow_shopping/widgets/app_button.dart';
 import 'package:wow_shopping/widgets/common.dart';
 import 'package:wow_shopping/widgets/top_nav_bar.dart';
 
-@immutable
-class WishlistPage extends StatefulWidget {
+import 'bloc/wishlist_bloc.dart';
+import 'widgets/cubit/wishlist_item_cubit.dart';
+
+//@immutable
+class WishlistPage extends StatelessWidget {
   const WishlistPage({super.key});
 
   @override
-  State<WishlistPage> createState() => _WishlistPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => WishlistBloc(wishlistRepo: context.wishlistRepo),
+      child: WishlistPageView(),
+    );
+  }
 }
 
-class _WishlistPageState extends State<WishlistPage> {
-  var _wishlistItems = <ProductItem>[];
-  final _selectedItems = <String>{};
-
-  bool isSelected(ProductItem item) {
-    return _selectedItems.contains(item.id);
-  }
-
-  void setSelected(ProductItem item, bool selected) {
-    setState(() {
-      if (selected) {
-        _selectedItems.add(item.id);
-      } else {
-        _selectedItems.remove(item.id);
-      }
-    });
-  }
-
-  void toggleSelectAll() {
-    final allIds = _wishlistItems.map((el) => el.id).toList();
-    setState(() {
-      if (_selectedItems.containsAll(allIds)) {
-        _selectedItems.clear();
-      } else {
-        _selectedItems.addAll(allIds);
-      }
-    });
-  }
-
-  void _removeSelected() {
-    setState(() {
-      for (final selected in _selectedItems) {
-        wishlistRepo.removeToWishlist(selected);
-      }
-      _selectedItems.clear();
-    });
-  }
+class WishlistPageView extends StatelessWidget {
+  const WishlistPageView({
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // var wishlistItems = context.watch<WishlistBloc>().wishlistItems;
     return SizedBox.expand(
       child: Material(
         child: WishlistConsumer(
-          builder: (BuildContext context, List<ProductItem> wishlist) {
-            _wishlistItems = wishlist;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TopNavBar(
-                  title: const Text('Wishlist'),
-                  actions: [
-                    TextButton(
-                      onPressed: toggleSelectAll,
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.white,
+          builder: (BuildContext context, wishlistItems) {
+            return BlocBuilder<WishlistBloc, WishlistState>(
+              builder: (context, state) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TopNavBar(
+                      title: const Text('Wishlist'),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            context
+                                .read<WishlistBloc>()
+                                .add(ToggleSelectAllWishlist());
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Select All'),
+                        ),
+                      ],
+                    ),
+                    Expanded(
+                      child: MediaQuery.removeViewPadding(
+                        context: context,
+                        removeTop: true,
+                        child: ListView.builder(
+                          padding: verticalPadding12,
+                          itemCount: wishlistItems.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final item = wishlistItems[index];
+                            return Padding(
+                              padding: verticalPadding12,
+                              child: BlocBuilder<WishlistItemCubit,
+                                  WishlistItemState>(
+                                builder: (context, state) {
+                                  var isSelected = state.isSelected;
+                                  return WishlistItem(
+                                      item: item,
+                                      onPressed: (item) {
+                                        // FIXME: navigate to product details
+                                      },
+                                      selected: isSelected,
+                                      onToggleSelection: (item, selected) {
+                                        context
+                                            .read<WishlistItemCubit>()
+                                            .setSelected(isSelected);
+                                      });
+                                },
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                      child: const Text('Select All'),
+                    ),
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.fastOutSlowIn,
+                      alignment: Alignment.topCenter,
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        heightFactor:
+                            context.read<WishlistBloc>().selectedItems.isEmpty
+                                ? 0.0
+                                : 1.0,
+                        child: DecoratedBox(
+                          decoration: const BoxDecoration(
+                            color: appLightGreyColor,
+                            border: Border(
+                              top: BorderSide(
+                                  color: appDividerColor, width: 2.0),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: allPadding24,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: AppButton(
+                                    onPressed: () {
+                                      context
+                                          .read<WishlistBloc>()
+                                          .add(ClearWishlist());
+                                    },
+                                    label: 'Remove',
+                                    iconAsset: Assets.iconRemove,
+                                  ),
+                                ),
+                                horizontalMargin16,
+                                Expanded(
+                                  child: AppButton(
+                                    onPressed: () {
+                                      // FIXME: implement Buy Now button
+                                    },
+                                    label: 'Buy now',
+                                    iconAsset: Assets.iconBuy,
+                                    style: AppButtonStyle.highlighted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
-                ),
-                Expanded(
-                  child: MediaQuery.removeViewPadding(
-                    context: context,
-                    removeTop: true,
-                    child: ListView.builder(
-                      padding: verticalPadding12,
-                      itemCount: _wishlistItems.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        final item = _wishlistItems[index];
-                        return Padding(
-                          padding: verticalPadding12,
-                          child: WishlistItem(
-                            item: item,
-                            onPressed: (item) {
-                              // FIXME: navigate to product details
-                            },
-                            selected: isSelected(item),
-                            onToggleSelection: setSelected,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.fastOutSlowIn,
-                  alignment: Alignment.topCenter,
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    heightFactor: _selectedItems.isEmpty ? 0.0 : 1.0,
-                    child: DecoratedBox(
-                      decoration: const BoxDecoration(
-                        color: appLightGreyColor,
-                        border: Border(
-                          top: BorderSide(color: appDividerColor, width: 2.0),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: allPadding24,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: AppButton(
-                                onPressed: _removeSelected,
-                                label: 'Remove',
-                                iconAsset: Assets.iconRemove,
-                              ),
-                            ),
-                            horizontalMargin16,
-                            Expanded(
-                              child: AppButton(
-                                onPressed: () {
-                                  // FIXME: implement Buy Now button
-                                },
-                                label: 'Buy now',
-                                iconAsset: Assets.iconBuy,
-                                style: AppButtonStyle.highlighted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                );
+              },
             );
           },
         ),
@@ -158,14 +159,16 @@ class WishlistConsumer extends StatelessWidget {
     required this.builder,
   });
 
-  final Widget Function(BuildContext context, List<ProductItem> wishlist) builder;
+  final Widget Function(BuildContext context, List<ProductItem> wishlist)
+      builder;
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<ProductItem>>(
       initialData: context.wishlistRepo.currentWishlistItems,
       stream: context.wishlistRepo.streamWishlistItems,
-      builder: (BuildContext context, AsyncSnapshot<List<ProductItem>> snapshot) {
+      builder:
+          (BuildContext context, AsyncSnapshot<List<ProductItem>> snapshot) {
         return builder(context, snapshot.requireData);
       },
     );
